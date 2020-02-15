@@ -4,16 +4,17 @@ import com.alicp.jetcache.*;
 import com.alicp.jetcache.anno.*;
 import com.alicp.jetcache.anno.config.EnableCreateCacheAnnotation;
 import com.alicp.jetcache.anno.config.EnableMethodCache;
+import com.alicp.jetcache.anno.support.ConfigProvider;
 import com.alicp.jetcache.anno.support.GlobalCacheConfig;
 import com.alicp.jetcache.anno.support.SpringConfigProvider;
 import com.alicp.jetcache.embedded.EmbeddedCacheConfig;
 import com.alicp.jetcache.embedded.LinkedHashMapCache;
 import com.alicp.jetcache.external.ExternalCacheConfig;
+import com.alicp.jetcache.external.MockRemoteCache;
 import com.alicp.jetcache.support.FastjsonKeyConvertor;
 import com.alicp.jetcache.support.JavaValueDecoder;
 import com.alicp.jetcache.support.JavaValueEncoder;
 import com.alicp.jetcache.test.AbstractCacheTest;
-import com.alicp.jetcache.test.MockRemoteCache;
 import com.alicp.jetcache.test.anno.TestUtil;
 import com.alicp.jetcache.test.beans.MyFactoryBean;
 import com.alicp.jetcache.test.spring.SpringTest;
@@ -30,7 +31,6 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import javax.annotation.PostConstruct;
-import java.lang.reflect.Proxy;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -59,8 +59,8 @@ public class CreateCacheTest extends SpringTest {
         }
 
         @Bean
-        public GlobalCacheConfig config(SpringConfigProvider configProvider) {
-            GlobalCacheConfig pc = TestUtil.createGloableConfig(configProvider);
+        public GlobalCacheConfig config() {
+            GlobalCacheConfig pc = TestUtil.createGloableConfig();
             return pc;
         }
 
@@ -77,7 +77,7 @@ public class CreateCacheTest extends SpringTest {
         public static class Foo extends AbstractCacheTest {
 
             @Autowired
-            private GlobalCacheConfig globalCacheConfig;
+            private ConfigProvider configProvider;
 
             @CreateCache
             private Cache cache1;
@@ -137,7 +137,7 @@ public class CreateCacheTest extends SpringTest {
 
                 Assert.assertSame(getTarget(cacheSameName1), getTarget(cacheSameName2));
                 Assert.assertSame(getTarget(cacheSameName1),
-                        getTarget(globalCacheConfig.getCacheContext().getCache("sameCacheName")));
+                        getTarget(configProvider.getCacheContext().getCache("sameCacheName")));
                 Assert.assertNotSame(getTarget(cacheSameName1), getTarget(cache1));
 
                 cacheSameName1.put("SameKey", "SameValue");
@@ -188,6 +188,7 @@ public class CreateCacheTest extends SpringTest {
                 super.baseTest();
                 LoadingCacheTest.loadingCacheTest(cache1, 0);
                 RefreshCacheTest.refreshCacheTest(cache1, 200, 100);
+                RefreshCacheTest.computeIfAbsentTest(cache1);
             }
 
             private void cacheWithoutConvertorTest() {

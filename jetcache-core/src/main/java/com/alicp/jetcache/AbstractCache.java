@@ -3,7 +3,6 @@ package com.alicp.jetcache;
 import com.alicp.jetcache.embedded.AbstractEmbeddedCache;
 import com.alicp.jetcache.event.*;
 import com.alicp.jetcache.external.AbstractExternalCache;
-import com.alicp.jetcache.support.FastjsonKeyConvertor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +26,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
 
     private static Logger logger = LoggerFactory.getLogger(AbstractCache.class);
 
-    private ConcurrentHashMap<Object, LoaderLock> loaderMap;
+    private volatile ConcurrentHashMap<Object, LoaderLock> loaderMap;
 
     ConcurrentHashMap<Object, LoaderLock> initOrGetLoaderMap() {
         if (loaderMap == null) {
@@ -45,9 +44,16 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
         sb.append("jetcache(")
                 .append(this.getClass().getSimpleName()).append(") ")
                 .append(oper)
-                .append(" error. key=")
-                .append(FastjsonKeyConvertor.INSTANCE.apply(key))
-                .append(".");
+                .append(" error.");
+        if (!(key instanceof byte[])) {
+            try {
+                sb.append(" key=[")
+                        .append(config().getKeyConvertor().apply((K) key))
+                        .append(']');
+            } catch (Exception ex) {
+                // ignore
+            }
+        }
         if (needLogStackTrace(e)) {
             logger.error(sb.toString(), e);
         } else {
@@ -143,17 +149,24 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
     static <K, V> V computeIfAbsentImpl(K key, Function<K, V> loader, boolean cacheNullWhenLoaderReturnNull,
                                                long expireAfterWrite, TimeUnit timeUnit, Cache<K, V> cache) {
         AbstractCache<K, V> abstractCache = CacheUtil.getAbstractCache(cache);
-        Function<K, V> newLoader = CacheUtil.createProxyLoader(cache, loader, abstractCache::notify);
-        CacheGetResult<V> r = cache.GET(key);
+        CacheLoader<K, V> newLoader = CacheUtil.createProxyLoader(cache, loader, abstractCache::notify);
+        CacheGetResult<V> r;
+        if (cache instanceof RefreshCache) {
+            RefreshCache<K, V> refreshCache = ((RefreshCache<K, V>) cache);
+            r = refreshCache.GET(key);
+            refreshCache.addOrUpdateRefreshTask(key, newLoader);
+        } else {
+            r = cache.GET(key);
+        }
         if (r.isSuccess()) {
             return r.getValue();
         } else {
             Consumer<V> cacheUpdater = (loadedValue) -> {
-                if(needUpdate(loadedValue, cacheNullWhenLoaderReturnNull, loader)) {
+                if(needUpdate(loadedValue, cacheNullWhenLoaderReturnNull, newLoader)) {
                     if (timeUnit != null) {
-                        cache.PUT(key, loadedValue, expireAfterWrite, timeUnit);
+                        cache.PUT(key, loadedValue, expireAfterWrite, timeUnit).waitForResult();
                     } else {
-                        cache.put(key, loadedValue);
+                        cache.PUT(key, loadedValue).waitForResult();
                     }
                 }
             };

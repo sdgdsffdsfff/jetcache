@@ -15,6 +15,8 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+
 /**
  * Created on 2019/5/1.
  *
@@ -39,6 +41,7 @@ public class SpringDataRedisStarterTest extends SpringTest {
         @CreateCache
         private Cache cache;
 
+        @PostConstruct
         public void test() {
             Assert.assertTrue(cache.PUT("K", "V").isSuccess());
         }

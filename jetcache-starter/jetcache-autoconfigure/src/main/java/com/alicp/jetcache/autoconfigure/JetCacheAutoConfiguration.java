@@ -20,6 +20,7 @@ import org.springframework.context.annotation.Import;
 @EnableConfigurationProperties(JetCacheProperties.class)
 @Import({RedisAutoConfiguration.class,
         CaffeineAutoConfiguration.class,
+        MockRemoteCacheAutoConfiguration.class,
         LinkedHashMapAutoConfiguration.class,
         RedisLettuceAutoConfiguration.class,
         RedisSpringDataAutoConfiguration.class})
@@ -57,7 +58,6 @@ public class JetCacheAutoConfiguration {
             return _globalCacheConfig;
         }
         _globalCacheConfig = new GlobalCacheConfig();
-        _globalCacheConfig.setConfigProvider(configProvider);
         _globalCacheConfig.setHiddenPackages(props.getHiddenPackages());
         _globalCacheConfig.setStatIntervalMinutes(props.getStatIntervalMinutes());
         _globalCacheConfig.setAreaInCacheName(props.isAreaInCacheName());

@@ -20,8 +20,8 @@ import java.util.stream.Collectors;
  *
  * @author <a href="mailto:areyouok@gmail.com">huangli</a>
  */
-public class DefaultCacheMonitorManager {
-    private static final Logger logger = LoggerFactory.getLogger(DefaultCacheMonitorManager.class);
+public class DefaultMetricsManager {
+    private static final Logger logger = LoggerFactory.getLogger(DefaultMetricsManager.class);
 
     protected CopyOnWriteArrayList<DefaultCacheMonitor> monitorList = new CopyOnWriteArrayList();
 
@@ -29,22 +29,22 @@ public class DefaultCacheMonitorManager {
 
     private int resetTime;
     private TimeUnit resetTimeUnit;
-    private Consumer<StatInfo> statCallback;
+    private Consumer<StatInfo> metricsCallback;
 
-    public DefaultCacheMonitorManager(int resetTime, TimeUnit resetTimeUnit, Consumer<StatInfo> statCallback) {
+    public DefaultMetricsManager(int resetTime, TimeUnit resetTimeUnit, Consumer<StatInfo> metricsCallback) {
         this.resetTime = resetTime;
         this.resetTimeUnit = resetTimeUnit;
-        this.statCallback = statCallback;
+        this.metricsCallback = metricsCallback;
     }
 
-    public DefaultCacheMonitorManager(int resetTime, TimeUnit resetTimeUnit) {
+    public DefaultMetricsManager(int resetTime, TimeUnit resetTimeUnit) {
         this(resetTime, resetTimeUnit, false);
     }
 
-    public DefaultCacheMonitorManager(int resetTime, TimeUnit resetTimeUnit, boolean verboseLog) {
+    public DefaultMetricsManager(int resetTime, TimeUnit resetTimeUnit, boolean verboseLog) {
         this.resetTime = resetTime;
         this.resetTimeUnit = resetTimeUnit;
-        this.statCallback = new StatInfoLogger(verboseLog);
+        this.metricsCallback = new StatInfoLogger(verboseLog);
     }
 
     Runnable cmd = new Runnable() {
@@ -66,9 +66,9 @@ public class DefaultCacheMonitorManager {
                 statInfo.setStats(stats);
                 time = endTime;
 
-                statCallback.accept(statInfo);
+                metricsCallback.accept(statInfo);
             } catch (Exception e) {
-                logger.error("jetcache DefaultCacheMonitorManager error", e);
+                logger.error("jetcache DefaultMetricsManager error", e);
             }
         }
     };
@@ -91,12 +91,12 @@ public class DefaultCacheMonitorManager {
         future = null;
     }
 
-    public DefaultCacheMonitorManager add(DefaultCacheMonitor... monitors) {
+    public DefaultMetricsManager add(DefaultCacheMonitor... monitors) {
         monitorList.addAll(Arrays.asList(monitors));
         return this;
     }
 
-    public DefaultCacheMonitorManager remove(DefaultCacheMonitor... monitor) {
+    public DefaultMetricsManager remove(DefaultCacheMonitor... monitor) {
         monitorList.remove(monitor);
         return this;
     }
